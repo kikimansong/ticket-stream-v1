@@ -141,37 +141,37 @@ k6 run --out web-dashboard=export=report.html k6/pessimistic-lock-test.js
 
 ```mermaid
 flowchart TD
-    Step1["<b>1. 공연 목록 조회</b><br/><code>GET /api/v1/concerts</code>"]
-    --> Step2["<b>2. 실시간 좌석 현황 조회</b><br/><code>GET /api/v1/seats?concertId={id}</code>"]
-    --> Step3["<b>3. 티켓 예매 주문 요청</b><br/><code>POST /api/v1/orders</code>"]
+    Step1["1. 공연 목록 조회 (GET /api/v1/concerts)"]
+    --> Step2["2. 실시간 좌석 현황 조회 (GET /api/v1/seats)"]
+    --> Step3["3. 티켓 예매 주문 요청 (POST /api/v1/orders)"]
 
     subgraph CoreTx ["POST /api/v1/orders 단일 트랜잭션 (@Transactional)"]
         direction TB
-        C1["① 좌석 선점 (AVAILABLE → RESERVED)<br/><i>지정한 Lock 전략 적용</i>"]
+        C1["① 좌석 선점 (AVAILABLE → RESERVED)"]
         --> C2["② 가주문 생성 (Order: PENDING)"]
         --> C3["③ 결제 승인 기록 (Payment: SUCCESS)"]
         --> C4["④ 최종 판매 확정 (Order: COMPLETED, Seat: SOLD)"]
     end
 
     Step3 --- CoreTx
-    CoreTx --> Step4["<b>4. 실시간 좌석 맵 재동기화</b><br/><code>GET /api/v1/seats?concertId={id}</code>"]
+    CoreTx --> Step4["4. 실시간 좌석 맵 재동기화 (GET /api/v1/seats)"]
 ```
 
 ---
 
 ### 5.2 3가지 동시성 락 전략별 처리 비교
 
-동일 좌석에 복수의 사용자가 동시에 `POST /api/v1/orders`를 호출했을 때의 동작 비교입니다. 1, 2, 3 순서대로 세로로 배치하여 가독성을 높였습니다.
+동일 좌석에 복수의 사용자가 동시에 `POST /api/v1/orders`를 호출했을 때의 동작 비교입니다.
 
 #### 1. 비관적 락 (`PESSIMISTIC` - 줄서기 방식)
 DB 행 배타 잠금(`SELECT FOR UPDATE`)을 획득한 1명만 진행되고, 나머지는 대기하다 안전하게 차단됩니다.
 
 ```mermaid
 flowchart TD
-    P1["<b>사용자 A (선행 요청)</b><br/>DB 행 락 획득 (SELECT ... FOR UPDATE)"]
-    --> P2["<b>사용자 B (후행 요청)</b><br/>A의 트랜잭션이 끝날 때까지 DB 락 대기 (Blocking)"]
-    --> P3["<b>사용자 A 예매 완료 & 커밋</b><br/>주문/결제 완료 (200 OK) 및 Row Lock 해제"]
-    --> P4["<b>사용자 B 락 획득 후 좌석 상태 검증</b><br/>좌석 상태가 이미 'SOLD'이므로 400 Bad Request 차단"]
+    P1["1. 사용자 A: DB 행 락 점유 (SELECT FOR UPDATE)"]
+    --> P2["2. 사용자 B: A의 트랜잭션이 끝날 때까지 대기 (Blocking)"]
+    --> P3["3. 사용자 A: 주문 및 결제 완료 (200 OK, 락 해제)"]
+    --> P4["4. 사용자 B: 좌석 SOLD 확인 후 차단 (400 Bad Request)"]
 ```
 
 #### 2. 낙관적 락 (`OPTIMISTIC` - 버전 확인 방식)
@@ -179,10 +179,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    O1["<b>사용자 A, B 동시 조회</b><br/>동일 좌석 데이터 읽음 (version = 0, status = AVAILABLE)"]
-    --> O2["<b>사용자 A 결제 후 먼저 커밋 성공</b><br/>UPDATE seats SET version = 1 WHERE version = 0 (200 OK)"]
-    --> O3["<b>사용자 B 뒤늦게 커밋 시도</b><br/>DB의 version이 이미 1이므로 조건 불일치 (0 rows updated)"]
-    --> O4["<b>OptimisticLockingFailureException 발생</b><br/>사용자 B 트랜잭션 즉시 롤백 및 409 Conflict 반환"]
+    O1["1. 사용자 A, B: 동일 좌석 동시 조회 (version = 0)"]
+    --> O2["2. 사용자 A: 결제 후 먼저 커밋 성공 (version = 1, 200 OK)"]
+    --> O3["3. 사용자 B: 뒤늦게 커밋 시도 → 버전 불일치 감지"]
+    --> O4["4. 사용자 B: OptimisticLock 예외 발생 및 롤백 (409 Conflict)"]
 ```
 
 #### 3. 락 미적용 (`NONE` - 더블 부킹 결함 재현)
@@ -190,9 +190,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    N1["<b>사용자 A, B 동시 요청 수신</b><br/>동시에 AVAILABLE 상태를 확인하고 가주문 생성 진행"]
-    --> N2["<b>Native UPDATE로 락/버전 검사 없이 진행</b><br/>A와 B 모두 각각 주문 및 결제 승인 처리"]
-    --> N3["<b>🚨 더블 부킹 (Double Booking) 결함 발생</b><br/>1개 좌석에 대해 2건의 주문/결제가 모두 200 OK로 완료됨"]
+    N1["1. 사용자 A, B: 락 없이 동시 요청 수신"]
+    --> N2["2. A, B 모두 AVAILABLE 상태로 판단하고 각각 주문/결제 진행"]
+    --> N3["3. [더블 부킹 결함] 1개 좌석에 2건 주문 모두 승인 (200 OK)"]
 ```
 
 ---
