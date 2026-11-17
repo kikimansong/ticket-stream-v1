@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b0f19; }
+      .card { fill: #1e293b; stroke: #334155; stroke-width: 1.5; rx: 8px; }
+      .card-sub { fill: #0f172a; stroke: #3b82f6; stroke-width: 1.5; stroke-dasharray: 4; rx: 8px; }
+      .inner-card { fill: #1e293b; stroke: #475569; stroke-width: 1.2; rx: 6px; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 15px; fill: #f8fafc; text-anchor: middle; }
+      .text-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; fill: #94a3b8; text-anchor: middle; font-mono: true; }
+      .text-step { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 600; font-size: 13px; fill: #e2e8f0; text-anchor: middle; }
+      .text-badge { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 600; font-size: 11px; fill: #60a5fa; text-anchor: middle; }
+      .arrow { stroke: #60a5fa; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-inner { stroke: #94a3b8; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead-gray); }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#60a5fa" />
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#94a3b8" />
+    </marker>
+  </defs>
+
+  <!-- 전체 배경 -->
+  <rect width="100%" height="100%" class="bg" rx="12" />
+
+  <!-- 1. 공연 목록 조회 -->
+  <rect x="230" y="25" width="340" height="52" class="card" />
+  <text x="400" y="47" class="text-title">1. 공연 목록 조회</text>
+  <text x="400" y="65" class="text-sub">GET /api/v1/concerts</text>
+
+  <!-- 화살표 1 -> 2 -->
+  <path d="M 400 77 L 400 97" class="arrow" />
+
+  <!-- 2. 실시간 좌석 현황 조회 -->
+  <rect x="230" y="97" width="340" height="52" class="card" />
+  <text x="400" y="119" class="text-title">2. 실시간 좌석 현황 조회</text>
+  <text x="400" y="137" class="text-sub">GET /api/v1/seats?concertId={id}</text>
+
+  <!-- 화살표 2 -> 3 -->
+  <path d="M 400 149 L 400 172" class="arrow" />
+
+  <!-- 3. 핵심 단일 트랜잭션 컨테이너 -->
+  <rect x="170" y="175" width="460" height="340" class="card-sub" />
+  <rect x="240" y="185" width="320" height="24" rx="4" fill="#1e3a8a" />
+  <text x="400" y="201" class="text-badge">POST /api/v1/orders 단일 트랜잭션 (@Transactional)</text>
+
+  <!-- 3-1. 좌석 선점 -->
+  <rect x="210" y="222" width="380" height="48" class="inner-card" />
+  <text x="400" y="244" class="text-step">① 좌석 선점 (AVAILABLE → RESERVED)</text>
+  <text x="400" y="260" class="text-sub">지정한 동시성 락 전략(LockType) 적용</text>
+
+  <path d="M 400 270 L 400 286" class="arrow-inner" />
+
+  <!-- 3-2. 가주문 생성 -->
+  <rect x="210" y="286" width="380" height="48" class="inner-card" />
+  <text x="400" y="308" class="text-step">② 가주문 생성 (orders 테이블 레코드 생성)</text>
+  <text x="400" y="324" class="text-sub">주문 상태: PENDING (결제 대기)</text>
+
+  <path d="M 400 334 L 400 350" class="arrow-inner" />
+
+  <!-- 3-3. 결제 승인 기록 -->
+  <rect x="210" y="350" width="380" height="48" class="inner-card" />
+  <text x="400" y="372" class="text-step">③ PG 결제 승인 기록 (payments 테이블)</text>
+  <text x="400" y="388" class="text-sub">결제 상태: SUCCESS (승인 완료)</text>
+
+  <path d="M 400 398 L 400 414" class="arrow-inner" />
+
+  <!-- 3-4. 최종 판매 확정 -->
+  <rect x="210" y="414" width="380" height="52" class="inner-card" fill="#14532d" />
+  <text x="400" y="436" class="text-step" fill="#4ade80">④ 최종 판매 확정 및 트랜잭션 커밋</text>
+  <text x="400" y="454" class="text-sub">Order: COMPLETED / Seat: SOLD 확정</text>
+
+  <!-- 화살표 3 -> 4 -->
+  <path d="M 400 515 L 400 538" class="arrow" />
+
+  <!-- 4. 완료 후 좌석 맵 재동기화 -->
+  <rect x="230" y="540" width="340" height="52" class="card" />
+  <text x="400" y="562" class="text-title">4. 실시간 좌석 맵 재동기화</text>
+  <text x="400" y="580" class="text-sub">GET /api/v1/seats (판매 완료 좌석 빨간색 갱신)</text>
+</svg>

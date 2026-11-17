@@ -8,23 +8,7 @@
 
 사용자가 공연을 조회하고 좌석을 선점하여 결제까지 완료하는 전체 주기입니다.
 
-```mermaid
-flowchart TD
-    Step1["1. 공연 선택 (GET /api/v1/concerts)"]
-    --> Step2["2. 좌석 현황 조회 (GET /api/v1/seats)"]
-    --> Step3["3. 예매 요청 (POST /api/v1/orders)"]
-    
-    subgraph CoreCycle ["POST /api/v1/orders 내부 원자적 실행 (@Transactional)"]
-        direction TB
-        C1["① 좌석 선점 (AVAILABLE → RESERVED)"]
-        --> C2["② 가주문 생성 (Order: PENDING)"]
-        --> C3["③ 결제 승인 (Payment: SUCCESS)"]
-        --> C4["④ 최종 확정 (Order: COMPLETED, Seat: SOLD)"]
-    end
-
-    Step3 --- CoreCycle
-    CoreCycle --> Step4["4. 완료 후 좌석 맵 갱신 (GET /api/v1/seats)"]
-```
+![전체 예매 라이프사이클 흐름](docs/images/lifecycle-flow.svg)
 
 ### 단계별 상세 설명
 
@@ -50,28 +34,13 @@ flowchart TD
 | **사용 목적** | 충돌이 극심한 대규모 티켓팅에 필수 | 충돌 빈도가 낮고 락 지연을 줄일 때 | 동시성 결함/부작용 검증용 |
 
 #### 1. 비관적 락 (`PESSIMISTIC` - 줄서기)
-```mermaid
-flowchart TD
-    P1["1. 사용자 A: DB 행 락 점유 (SELECT FOR UPDATE)"]
-    --> P2["2. 사용자 B: A의 트랜잭션이 끝날 때까지 대기 (Blocking)"]
-    --> P3["3. 사용자 A 예매 완료 후, B는 '이미 팔린 좌석' 확인 후 400 Bad Request 차단"]
-```
+![비관적 락 처리 흐름](docs/images/pessimistic-lock-flow.svg)
 
 #### 2. 낙관적 락 (`OPTIMISTIC` - 버전 확인)
-```mermaid
-flowchart TD
-    O1["1. 사용자 A, B: 동일 좌석 동시 진행 (version = 0)"]
-    --> O2["2. 사용자 A: 먼저 커밋 성공 (version이 1로 증가, 200 OK)"]
-    --> O3["3. 사용자 B: 뒤늦게 커밋 시도 → DB 버전 불일치로 409 Conflict 실패 및 롤백"]
-```
+![낙관적 락 처리 흐름](docs/images/optimistic-lock-flow.svg)
 
 #### 3. 락 미적용 (`NONE` - 더블 부킹 결함)
-```mermaid
-flowchart TD
-    N1["1. 사용자 A, B: 락 없이 동시 요청 수신"]
-    --> N2["2. A, B 둘 다 각각 가주문 생성 및 PG 결제 승인 완료"]
-    --> N3["3. [더블 부킹 결함] 1개 좌석에 2건의 주문이 중복 생성되어 결함 발생"]
-```
+![락 미적용 더블 부킹 결함](docs/images/no-lock-flow.svg)
 
 ---
 

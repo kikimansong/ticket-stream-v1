@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b0f19; }
+      .card { fill: #1e293b; stroke: #334155; stroke-width: 1.5; rx: 8px; }
+      .card-alert { fill: #4c0519; stroke: #e11d48; stroke-width: 2; rx: 8px; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 14px; fill: #f8fafc; text-anchor: middle; }
+      .text-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; fill: #94a3b8; text-anchor: middle; }
+      .text-alert { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 15px; fill: #fda4af; text-anchor: middle; }
+      .arrow { stroke: #f43f5e; stroke-width: 2; fill: none; marker-end: url(#arrowhead-red); }
+    </style>
+    <marker id="arrowhead-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f43f5e" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" rx="10" />
+
+  <!-- 1단계 -->
+  <rect x="80" y="25" width="600" height="56" class="card" />
+  <text x="380" y="48" class="text-title">1. 사용자 A, B : 락 / 버전 검사 없이 동시 요청 수신</text>
+  <text x="380" y="67" class="text-sub">동시성 제어가 전혀 없으므로 두 요청 모두 동시에 AVAILABLE 상태를 정상으로 읽음</text>
+
+  <path d="M 380 81 L 380 105" class="arrow" />
+
+  <!-- 2단계 -->
+  <rect x="80" y="105" width="600" height="56" class="card" />
+  <text x="380" y="128" class="text-title">2. A, B 모두 각각 가주문 생성 및 PG 결제 승인 완료</text>
+  <text x="380" y="147" class="text-sub">A와 B 모두 주문 레코드를 생성하고 PG 승인을 거쳐 좌석 상태를 SOLD로 업데이트</text>
+
+  <path d="M 380 161 L 380 185" class="arrow" />
+
+  <!-- 3단계 (결함 발생) -->
+  <rect x="80" y="185" width="600" height="76" class="card-alert" />
+  <text x="380" y="212" class="text-alert">🚨 더블 부킹 (Double Booking) 결함 발생!</text>
+  <text x="380" y="233" class="text-sub" fill="#fecdd3">단 1개 좌석(seat_id=1)에 2건의 주문(orders) 및 결제(payments)가 모두 200 OK로 승인됨</text>
+  <text x="380" y="250" class="text-sub" fill="#fecdd3">👉 동일 좌석 중복 판매 발생: 데이터 정합성 100% 파괴 입증</text>
+</svg>

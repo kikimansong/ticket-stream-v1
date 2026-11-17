@@ -139,23 +139,7 @@ k6 run --out web-dashboard=export=report.html k6/pessimistic-lock-test.js
 
 ### 5.1 전체 예매 라이프사이클 흐름
 
-```mermaid
-flowchart TD
-    Step1["1. 공연 목록 조회 (GET /api/v1/concerts)"]
-    --> Step2["2. 실시간 좌석 현황 조회 (GET /api/v1/seats)"]
-    --> Step3["3. 티켓 예매 주문 요청 (POST /api/v1/orders)"]
-
-    subgraph CoreTx ["POST /api/v1/orders 단일 트랜잭션 (@Transactional)"]
-        direction TB
-        C1["① 좌석 선점 (AVAILABLE → RESERVED)"]
-        --> C2["② 가주문 생성 (Order: PENDING)"]
-        --> C3["③ 결제 승인 기록 (Payment: SUCCESS)"]
-        --> C4["④ 최종 판매 확정 (Order: COMPLETED, Seat: SOLD)"]
-    end
-
-    Step3 --- CoreTx
-    CoreTx --> Step4["4. 실시간 좌석 맵 재동기화 (GET /api/v1/seats)"]
-```
+![전체 예매 라이프사이클 흐름](docs/images/lifecycle-flow.svg)
 
 ---
 
@@ -166,34 +150,17 @@ flowchart TD
 #### 1. 비관적 락 (`PESSIMISTIC` - 줄서기 방식)
 DB 행 배타 잠금(`SELECT FOR UPDATE`)을 획득한 1명만 진행되고, 나머지는 대기하다 안전하게 차단됩니다.
 
-```mermaid
-flowchart TD
-    P1["1. 사용자 A: DB 행 락 점유 (SELECT FOR UPDATE)"]
-    --> P2["2. 사용자 B: A의 트랜잭션이 끝날 때까지 대기 (Blocking)"]
-    --> P3["3. 사용자 A: 주문 및 결제 완료 (200 OK, 락 해제)"]
-    --> P4["4. 사용자 B: 좌석 SOLD 확인 후 차단 (400 Bad Request)"]
-```
+![비관적 락 처리 흐름](docs/images/pessimistic-lock-flow.svg)
 
 #### 2. 낙관적 락 (`OPTIMISTIC` - 버전 확인 방식)
 락 없이 동시에 진행한 후, 커밋 시점에 `@Version` 충돌을 감지하여 1명만 성공시키고 후행자는 즉시 롤백합니다.
 
-```mermaid
-flowchart TD
-    O1["1. 사용자 A, B: 동일 좌석 동시 조회 (version = 0)"]
-    --> O2["2. 사용자 A: 결제 후 먼저 커밋 성공 (version = 1, 200 OK)"]
-    --> O3["3. 사용자 B: 뒤늦게 커밋 시도 → 버전 불일치 감지"]
-    --> O4["4. 사용자 B: OptimisticLock 예외 발생 및 롤백 (409 Conflict)"]
-```
+![낙관적 락 처리 흐름](docs/images/optimistic-lock-flow.svg)
 
 #### 3. 락 미적용 (`NONE` - 더블 부킹 결함 재현)
 동시성 제어가 없어 동일 좌석에 중복 결제가 발생하는 레이스 컨디션을 재현합니다.
 
-```mermaid
-flowchart TD
-    N1["1. 사용자 A, B: 락 없이 동시 요청 수신"]
-    --> N2["2. A, B 모두 AVAILABLE 상태로 판단하고 각각 주문/결제 진행"]
-    --> N3["3. [더블 부킹 결함] 1개 좌석에 2건 주문 모두 승인 (200 OK)"]
-```
+![락 미적용 더블 부킹 결함](docs/images/no-lock-flow.svg)
 
 ---
 

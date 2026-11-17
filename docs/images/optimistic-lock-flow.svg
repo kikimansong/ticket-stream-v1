@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 370" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0b0f19; }
+      .card { fill: #1e293b; stroke: #334155; stroke-width: 1.5; rx: 8px; }
+      .card-success { fill: #064e3b; stroke: #059669; stroke-width: 1.5; rx: 8px; }
+      .card-fail { fill: #451a03; stroke: #d97706; stroke-width: 1.5; rx: 8px; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 14px; fill: #f8fafc; text-anchor: middle; }
+      .text-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; fill: #94a3b8; text-anchor: middle; }
+      .text-win { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 14px; fill: #34d399; text-anchor: middle; }
+      .text-lose { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 14px; fill: #fbbf24; text-anchor: middle; }
+      .arrow { stroke: #60a5fa; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#60a5fa" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" rx="10" />
+
+  <!-- 1단계 -->
+  <rect x="80" y="25" width="600" height="56" class="card" />
+  <text x="380" y="48" class="text-title">1. 사용자 A, B : 락 없이 동일 좌석 동시 조회</text>
+  <text x="380" y="67" class="text-sub">두 트랜잭션 모두 대기 없이 version=0, status=AVAILABLE 상태를 정상 조회하고 진행</text>
+
+  <path d="M 380 81 L 380 105" class="arrow" />
+
+  <!-- 2단계 -->
+  <rect x="80" y="105" width="600" height="56" class="card-success" />
+  <text x="380" y="128" class="text-win">2. 사용자 A : 결제 완료 후 먼저 커밋 성공 (200 OK)</text>
+  <text x="380" y="147" class="text-sub" fill="#a7f3d0">UPDATE seats SET version=1 WHERE id=1 AND version=0 쿼리 성공 → DB version이 1로 증가</text>
+
+  <path d="M 380 161 L 380 185" class="arrow" />
+
+  <!-- 3단계 -->
+  <rect x="80" y="185" width="600" height="56" class="card" />
+  <text x="380" y="208" class="text-title">3. 사용자 B : 뒤늦게 커밋 시도 → 버전 불일치 감지</text>
+  <text x="380" y="227" class="text-sub">UPDATE seats ... WHERE version=0 시도 시 이미 version=1이므로 0 rows updated 반환</text>
+
+  <path d="M 380 241 L 380 265" class="arrow" />
+
+  <!-- 4단계 -->
+  <rect x="80" y="265" width="600" height="66" class="card-fail" />
+  <text x="380" y="289" class="text-lose">4. 사용자 B : 충돌 감지 및 트랜잭션 즉시 롤백 (409 Conflict)</text>
+  <text x="380" y="308" class="text-sub" fill="#fde68a">스프링 OptimisticLockingFailureException 발생 → 가주문/결제 모두 롤백</text>
+  <text x="380" y="324" class="text-sub" fill="#fde68a">👉 HTTP 409 응답: "동시 요청 충돌 발생 (낙관적 락 충돌): 이미 선점 중인 좌석입니다"</text>
+</svg>
