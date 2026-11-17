@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ticket-stream-v1
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ticket_v1_db
+    driver-class-name: org.postgresql.Driver
+    username: ticket
+    password: "1234"
+    hikari:
+      pool-name: TicketV1HikariCP
+      maximum-pool-size: 10          # 실환경 동시성 병목 검증용 커넥션 풀 크기 (10개)
+      minimum-idle: 5
+      connection-timeout: 3000       # 락 대기 지연 시 3초 후 Connection Timeout
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    com.ticketstream: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    com.zaxxer.hikari: INFO
+
+---
+# 도커 없이 단독 실행할 때 사용할 H2 프로필 (--spring.profiles.active=h2)
+spring:
+  config:
+    activate:
+      on-profile: h2
+  datasource:
+    url: jdbc:h2:mem:ticketdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 10
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect

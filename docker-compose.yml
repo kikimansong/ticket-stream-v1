@@ -1,0 +1,22 @@
+name: ticket-stream-v1
+
+services:
+  # ========================================================
+  # PostgreSQL (v1 모놀리식 실환경 테스트용 DB)
+  # ========================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ticket-v1-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ticket
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: ticket_v1_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_v1_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  postgres_v1_data:
